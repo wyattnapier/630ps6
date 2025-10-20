@@ -75,7 +75,7 @@ def RandomConnections(n):
 def run_experiment():
     ns = [500, 5000, 50000]
     num_runs = 20
-    random.seed(42)
+    # random.seed(42)
 
     results = {}
 
