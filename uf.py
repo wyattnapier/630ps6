@@ -3,6 +3,7 @@ from heapdict import heapdict
 import matplotlib.pyplot as plt
 import numpy as np
 from math import comb
+import os
 
 def RandomConnections(n):
     # initialize node set, graph, and structures
@@ -72,18 +73,19 @@ def RandomConnections(n):
 
     return minComp, maxComp
 
-def run_experiment():
+def run_experiments():
     ns = [500, 5000, 50000]
     num_runs = 20
-    # random.seed(42)
-
+    random.seed(42)
     results = {}
 
+    os.makedirs("plots", exist_ok=True)  # save all plots in ./plots/
+
     for n in ns:
-        print(f"Running experiments for n={n}...")
+        print(f"\nRunning experiments for n = {n}...")
         runs_min = []
         runs_max = []
-        tbig_vals, tconn_vals, tnoiso_vals, diff_vals = [], [], [], []
+        tbig_vals, tconn_vals, tnoiso_vals = [], [], []
 
         for _ in range(num_runs):
             minComp, maxComp = RandomConnections(n)
@@ -94,13 +96,12 @@ def run_experiment():
             tconn = next((i for i, val in enumerate(maxComp) if val == n), None)
             tnoiso = next((i for i, val in enumerate(minComp) if val > 1), None)
 
-            tbig_vals.append(tbig if tbig is not None else np.nan)
-            tconn_vals.append(tconn if tconn is not None else np.nan)
-            tnoiso_vals.append(tnoiso if tnoiso is not None else np.nan)
-            diff_vals.append((tconn - tnoiso) if (tconn and tnoiso) else np.nan)
+            tbig_vals.append(tbig / n if tbig is not None else np.nan)
+            tconn_vals.append(tconn / n if tconn is not None else np.nan)
+            tnoiso_vals.append(tnoiso / n if tnoiso is not None else np.nan)
 
-        # Pad runs so we can average across different lengths
-        max_len = max(len(r) for r in runs_max)
+        # compute average component sizes
+        max_len = max(len(run) for run in runs_max)
         min_avg = np.zeros(max_len)
         max_avg = np.zeros(max_len)
         counts = np.zeros(max_len)
@@ -119,46 +120,50 @@ def run_experiment():
             "max_avg": max_avg,
             "tbig": tbig_vals,
             "tconn": tconn_vals,
-            "tnoiso": tnoiso_vals,
-            "diff": diff_vals,
+            "tnoiso": tnoiso_vals
         }
 
-        # Plot average maxComp and minComp over time
-        plt.figure(figsize=(10, 6))
+        # ---- Plot 1: average component sizes ----
+        plt.figure(figsize=(9, 6))
         plt.plot(max_avg, label='avg maxComp_t')
         plt.plot(min_avg, label='avg minComp_t')
-        plt.title(f"Average Component Sizes over Time (n={n})")
+        plt.title(f"Average Component Sizes vs t (n={n})")
         plt.xlabel("t (edges added)")
         plt.ylabel("Component size")
         plt.legend()
-        plt.grid(True)
+        plt.grid(True, linestyle="--", alpha=0.5)
         plt.tight_layout()
-        plt.show()
+        plt.savefig(f"plots/avg_components_n{n}.png", dpi=300)
+        plt.close()
 
-        # Plot histograms of tbig, tconnect, tnoiso
-        plt.figure(figsize=(10, 6))
-        plt.hist([x for x in tbig_vals if not np.isnan(x)], bins=15, alpha=0.6, label="tbig")
-        plt.hist([x for x in tconn_vals if not np.isnan(x)], bins=15, alpha=0.6, label="tconnect")
-        plt.hist([x for x in tnoiso_vals if not np.isnan(x)], bins=15, alpha=0.6, label="tno-iso")
-        plt.title(f"Histograms of Key Times (n={n})")
-        plt.xlabel("t")
-        plt.ylabel("Frequency")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
+        # ---- Plot 2: histograms side by side ----
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        fig.suptitle(f"Normalized Time Distributions (n={n})")
 
-        # Plot histogram of (tconnect - tnoiso)
-        plt.figure(figsize=(8, 5))
-        plt.hist([x for x in diff_vals if not np.isnan(x)], bins=15, color='purple', alpha=0.7)
-        plt.title(f"Histogram of (tconnect - tno-iso) (n={n})")
-        plt.xlabel("tconnect - tno-iso")
-        plt.ylabel("Frequency")
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
+        bins = 15
+        axes[0].hist([x for x in tbig_vals if not np.isnan(x)], bins=bins, color='C0', alpha=0.7)
+        axes[0].set_title(r"$t_{big}/n$")
+        axes[0].set_xlabel("t / n")
+        axes[0].set_ylabel("Frequency")
+
+        axes[1].hist([x for x in tconn_vals if not np.isnan(x)], bins=bins, color='C1', alpha=0.7)
+        axes[1].set_title(r"$t_{connect}/n$")
+        axes[1].set_xlabel("t / n")
+        axes[1].set_ylabel("Frequency")
+
+        axes[2].hist([x for x in tnoiso_vals if not np.isnan(x)], bins=bins, color='C2', alpha=0.7)
+        axes[2].set_title(r"$t_{no-iso}/n$")
+        axes[2].set_xlabel("t / n")
+        axes[2].set_ylabel("Frequency")
+
+        for ax in axes:
+            ax.grid(True, linestyle="--", alpha=0.5)
+
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.savefig(f"plots/histograms_n{n}.png", dpi=300)
+        plt.close()
 
     return results
 
 if __name__ == "__main__":
-    run_experiment()
+    run_experiments()
