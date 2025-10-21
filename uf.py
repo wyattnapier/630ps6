@@ -100,20 +100,39 @@ def run_experiments():
             tconn_vals.append(tconn / n if tconn is not None else np.nan)
             tnoiso_vals.append(tnoiso / n if tnoiso is not None else np.nan)
 
-        # compute average component sizes
+        # ---- compute average component sizes correctly ----
+        # max_len = max(len(run) for run in runs_max)
+        # min_avg = np.zeros(max_len)
+        # max_avg = np.zeros(max_len)
+        # counts = np.zeros(max_len)
+
+        # for minC, maxC in zip(runs_min, runs_max):
+        #     for i in range(len(maxC)):
+        #         min_avg[i] += minC[i]
+        #         max_avg[i] += maxC[i]
+        #         counts[i] += 1
+
+        # # divide only where counts > 0, leave NaN elsewhere to avoid plotting zeros
+        # min_avg = np.divide(min_avg, counts, out=np.full_like(min_avg, np.nan), where=counts>0)
+        # max_avg = np.divide(max_avg, counts, out=np.full_like(max_avg, np.nan), where=counts>0)
         max_len = max(len(run) for run in runs_max)
         min_avg = np.zeros(max_len)
         max_avg = np.zeros(max_len)
         counts = np.zeros(max_len)
 
         for minC, maxC in zip(runs_min, runs_max):
-            for i in range(len(maxC)):
-                min_avg[i] += minC[i]
-                max_avg[i] += maxC[i]
+            last_min, last_max = 1, 1  # initial values
+            for i in range(max_len):
+                if i < len(maxC):
+                    last_min = minC[i]
+                    last_max = maxC[i]
+                min_avg[i] += last_min
+                max_avg[i] += last_max
                 counts[i] += 1
 
-        min_avg /= np.where(counts == 0, 1, counts)
-        max_avg /= np.where(counts == 0, 1, counts)
+        # now divide to get average
+        min_avg = min_avg / counts
+        max_avg = max_avg / counts
 
         results[n] = {
             "min_avg": min_avg,
@@ -164,6 +183,7 @@ def run_experiments():
         plt.close()
 
     return results
+
 
 if __name__ == "__main__":
     run_experiments()
